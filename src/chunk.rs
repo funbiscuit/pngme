@@ -26,8 +26,9 @@ impl TryFrom<&[u8]> for Chunk {
         let chunk_type: [u8; 4] = chunk_type.try_into().unwrap();
         let chunk_type: ChunkType = chunk_type.try_into()?;
 
-        ensure!(rest.len() == (len + 4) as usize, "Data length is invalid");
+        ensure!(rest.len() >= (len + 4) as usize, "Data length is invalid");
         let (data, crc) = rest.split_at(len as usize);
+        let (crc, _) = crc.split_at(4);
         let crc: [u8; 4] = crc.try_into().unwrap();
         let crc = u32::from_be_bytes(crc);
         ensure!(
@@ -89,6 +90,13 @@ impl Chunk {
             .copied()
             .collect()
     }
+
+    /// Returns size of this chunk in bytes.
+    /// Same as calling `as_bytes().len()` but without allocations
+    pub fn chunk_size(&self) -> usize {
+        self.length() as usize + 12
+    }
+
     fn calc_crc(chunk_type: &[u8], data: &[u8]) -> u32 {
         let crc: Crc<u32> = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
         let mut digest = crc.digest();
